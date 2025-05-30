@@ -114,18 +114,24 @@ cvar_t v_ipitch_level = { "v_ipitch_level", "0.3", 0, 0.3 };
 float v_idlescale; // used by TFC for concussion grenade effect
 
 // HL2 Bobbing
+#define HL2_BOB_CYCLE_MIN 1.0f
 #define HL2_BOB_CYCLE_MAX 0.45f
+#define HL2_BOB           0.002f
 #define HL2_BOB_UP        0.5f
 
-float g_lateralBob = 0.0f;
-float g_verticalBob = 0.0f;
 
-ConVar cl_hl2_bob("cl_hl2_bob", "0", FCVAR_BHL_ARCHIVE, "Half-Life 2 style viewmodel bobbing");
+float g_lateralBob;
+float g_verticalBob;
+
+
+ConVar cl_hl2_weaponlag("cl_hl2_weaponlag", "0", FCVAR_BHL_ARCHIVE, "Half-Life 2 weaponlag");
+ConVar cl_hl2_bob("cl_hl2_bob", "0", FCVAR_BHL_ARCHIVE, "Half-Life 2 bobbing");
+
 
 float V_CalcNewBob(struct ref_params_s *pparams)
 {
-	static float bobtime = 0.0f;
-	static float lastbobtime = 0.0f;
+	static float bobtime;
+	static float lastbobtime;
 	float cycle;
 
 	Vector vel;
@@ -133,42 +139,56 @@ float V_CalcNewBob(struct ref_params_s *pparams)
 	vel[2] = 0;
 
 	if (pparams->onground == -1 || pparams->time == lastbobtime)
+	{
 		return 0.0f;
+	}
 
 	float speed = sqrt(vel[0] * vel[0] + vel[1] * vel[1]);
-	speed = clamp(speed, -320.0f, 320.0f);
+
+	speed = clamp(speed, -320, 320);
 
 	float bob_offset = RemapVal(speed, 0, 320, 0.0f, 1.0f);
 
 	bobtime += (pparams->time - lastbobtime) * bob_offset;
 	lastbobtime = pparams->time;
 
-	// Vertical bob
+	//Calculate the vertical bob
 	cycle = bobtime - (int)(bobtime / HL2_BOB_CYCLE_MAX) * HL2_BOB_CYCLE_MAX;
 	cycle /= HL2_BOB_CYCLE_MAX;
 
 	if (cycle < HL2_BOB_UP)
+	{
 		cycle = M_PI * cycle / HL2_BOB_UP;
+	}
 	else
-		cycle = M_PI + M_PI * (cycle - HL2_BOB_UP) / (1.0f - HL2_BOB_UP);
+	{
+		cycle = M_PI + M_PI * (cycle - HL2_BOB_UP) / (1.0 - HL2_BOB_UP);
+	}
 
 	g_verticalBob = speed * 0.004f;
-	g_verticalBob = g_verticalBob * 0.3f + g_verticalBob * 0.7f * sin(cycle);
+	g_verticalBob = g_verticalBob * 0.3 + g_verticalBob * 0.7 * sin(cycle);
+
 	g_verticalBob = clamp(g_verticalBob, -7.0f, 4.0f);
 
-	// Lateral bob
-	cycle = bobtime - (int)(bobtime / (HL2_BOB_CYCLE_MAX * 2)) * (HL2_BOB_CYCLE_MAX * 2);
-	cycle /= (HL2_BOB_CYCLE_MAX * 2);
+	//Calculate the lateral bob
+	cycle = bobtime - (int)(bobtime / HL2_BOB_CYCLE_MAX * 2) * HL2_BOB_CYCLE_MAX * 2;
+	cycle /= HL2_BOB_CYCLE_MAX * 2;
 
 	if (cycle < HL2_BOB_UP)
+	{
 		cycle = M_PI * cycle / HL2_BOB_UP;
+	}
 	else
-		cycle = M_PI + M_PI * (cycle - HL2_BOB_UP) / (1.0f - HL2_BOB_UP);
+	{
+		cycle = M_PI + M_PI * (cycle - HL2_BOB_UP) / (1.0 - HL2_BOB_UP);
+	}
 
 	g_lateralBob = speed * 0.004f;
-	g_lateralBob = g_lateralBob * 0.3f + g_lateralBob * 0.7f * sin(cycle);
+	g_lateralBob = g_lateralBob * 0.3 + g_lateralBob * 0.7 * sin(cycle);
+
 	g_lateralBob = clamp(g_lateralBob, -7.0f, 4.0f);
 
+	//NOTENOTE: We don't use this return value in our case (need to restructure the calculation function setup!)
 	return 0.0f;
 }
 
