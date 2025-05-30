@@ -113,17 +113,15 @@ cvar_t v_ipitch_level = { "v_ipitch_level", "0.3", 0, 0.3 };
 
 float v_idlescale; // used by TFC for concussion grenade effect
 
+// HL2 Bobbing
 #define HL2_BOB_CYCLE_MAX 0.45f
 #define HL2_BOB_UP        0.5f
 
-// Глобальні змінні для HL2 bobbing
 float g_lateralBob = 0.0f;
 float g_verticalBob = 0.0f;
 
-// ConVar для увімкнення HL2 bobbing
 ConVar cl_hl2_bob("cl_hl2_bob", "0", FCVAR_BHL_ARCHIVE, "Half-Life 2 style viewmodel bobbing");
 
-// Функція розрахунку HL2 bobbing
 float V_CalcNewBob(struct ref_params_s *pparams)
 {
 	static float bobtime = 0.0f;
@@ -135,9 +133,7 @@ float V_CalcNewBob(struct ref_params_s *pparams)
 	vel[2] = 0;
 
 	if (pparams->onground == -1 || pparams->time == lastbobtime)
-	{
 		return 0.0f;
-	}
 
 	float speed = sqrt(vel[0] * vel[0] + vel[1] * vel[1]);
 	speed = clamp(speed, -320.0f, 320.0f);
@@ -152,13 +148,9 @@ float V_CalcNewBob(struct ref_params_s *pparams)
 	cycle /= HL2_BOB_CYCLE_MAX;
 
 	if (cycle < HL2_BOB_UP)
-	{
 		cycle = M_PI * cycle / HL2_BOB_UP;
-	}
 	else
-	{
 		cycle = M_PI + M_PI * (cycle - HL2_BOB_UP) / (1.0f - HL2_BOB_UP);
-	}
 
 	g_verticalBob = speed * 0.004f;
 	g_verticalBob = g_verticalBob * 0.3f + g_verticalBob * 0.7f * sin(cycle);
@@ -169,13 +161,9 @@ float V_CalcNewBob(struct ref_params_s *pparams)
 	cycle /= (HL2_BOB_CYCLE_MAX * 2);
 
 	if (cycle < HL2_BOB_UP)
-	{
 		cycle = M_PI * cycle / HL2_BOB_UP;
-	}
 	else
-	{
 		cycle = M_PI + M_PI * (cycle - HL2_BOB_UP) / (1.0f - HL2_BOB_UP);
-	}
 
 	g_lateralBob = speed * 0.004f;
 	g_lateralBob = g_lateralBob * 0.3f + g_lateralBob * 0.7f * sin(cycle);
@@ -184,7 +172,7 @@ float V_CalcNewBob(struct ref_params_s *pparams)
 	return 0.0f;
 }
 
-// --- Модифікація V_CalcBob для підтримки hl2_bob ---
+// Quakeworld bob code, this fixes jitters in the mutliplayer since the clock (pparams->time) isn't quite linear
 float V_CalcBob(struct ref_params_s *pparams)
 {
 	static float lasttime;
@@ -195,10 +183,7 @@ float V_CalcBob(struct ref_params_s *pparams)
 	Vector vel;
 
 	if (pparams->onground == -1 || pparams->time == lasttime)
-	{
-		// just use old value
 		return bob;
-	}
 
 	lasttime = pparams->time;
 
@@ -214,13 +199,9 @@ float V_CalcBob(struct ref_params_s *pparams)
 	cycle /= cvar_bobcycle;
 
 	if (cycle < cvar_bobup)
-	{
 		cycle = M_PI * cycle / cvar_bobup;
-	}
 	else
-	{
 		cycle = M_PI + M_PI * (cycle - cvar_bobup) / (1.0 - cvar_bobup);
-	}
 
 	VectorCopy(pparams->simvel, vel);
 	vel[2] = 0;
@@ -235,6 +216,7 @@ float V_CalcBob(struct ref_params_s *pparams)
 	bob = max(bob, -7.f);
 	return bob;
 }
+
 
 // --- Модифікація V_CalcNormalRefdef для підтримки hl2_bob ---
 void V_CalcNormalRefdef(struct ref_params_s *pparams)
