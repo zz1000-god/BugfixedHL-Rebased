@@ -245,7 +245,7 @@ float V_CalcBob(struct ref_params_s *pparams)
 	if (!cl_hl2_bob.GetBool())
 		bob = sqrt(vel[0] * vel[0] + vel[1] * vel[1]) * cvar_bob;
 	else
-		bob = 0.0f; // HL2 bob не використовує цю змінну
+		bob = sqrt(vel[0] * vel[0] + vel[1] * vel[1]) * 0;
 
 	bob = bob * 0.3 + bob * 0.7 * sin(cycle);
 	bob = min(bob, 4.f);
@@ -711,22 +711,46 @@ void V_CalcNormalRefdef(struct ref_params_s *pparams)
 	}
 
 	// Let the viewmodel shake at about 10% of the amplitude
-	gEngfuncs.V_ApplyShake(view->origin, view->angles, 0.9);
-
-	for (i = 0; i < 3; i++)
+	if (cl_hl2_bob.GetBool())
 	{
-		view->origin[i] += bob * 0.4 * pparams->forward[i];
+		Vector forward, right;
+		AngleVectors(view->angles, forward, right, NULL);
+
+		V_CalcNewBob(pparams);
+
+		// Apply bob, but scaled down to 40%
+		VectorMA(view->origin, g_verticalBob * 0.1f, forward, view->origin);
+
+		// Z bob a bit more
+		view->origin[2] += g_verticalBob * 0.1f;
+
+		// bob the angles
+		view->angles[ROLL] += g_verticalBob * 0.3f;
+		view->angles[PITCH] -= g_verticalBob * 0.8f;
+		view->angles[YAW] -= g_lateralBob * 0.8f;
+
+		VectorMA(view->origin, g_lateralBob * 0.8f, right, view->origin);
 	}
-	view->origin[2] += bob;
-
-	// throw in a little tilt.
-	view->angles[YAW] -= bob * 0.5;
-	view->angles[ROLL] -= bob * 1;
-	view->angles[PITCH] -= bob * 0.3;
-
-	if (cl_bob_angled.GetBool())
+	else
 	{
-		view->curstate.angles = view->angles;
+		// Let the viewmodel shake at about 10% of the amplitude
+		gEngfuncs.V_ApplyShake(view->origin, view->angles, 0.9);
+
+		for (i = 0; i < 3; i++)
+		{
+			view->origin[i] += bob * 0.4 * pparams->forward[i];
+		}
+		view->origin[2] += bob;
+
+		// throw in a little tilt.
+		view->angles[YAW] -= bob * 0.5;
+		view->angles[ROLL] -= bob * 1;
+		view->angles[PITCH] -= bob * 0.3;
+
+		if (cl_bob_angled.GetBool())
+		{
+			view->curstate.angles = view->angles;
+		}
 	}
 
 	// pushing the view origin down off of the same X/Z plane as the ent's origin will give the
