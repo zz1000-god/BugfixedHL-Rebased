@@ -238,27 +238,26 @@ void V_CalcNormalRefdef(struct ref_params_s *pparams)
 		view->origin[2] += g_verticalBob * 0.1f;
 
 		// bob the angles
-		angles[ROLL] += g_verticalBob * 0.3f;
-		angles[PITCH] -= g_verticalBob * 0.8f;
-		angles[YAW] -= g_lateralBob * 0.8f;
+		view->angles[ROLL] += g_verticalBob * 0.3f;
+		view->angles[PITCH] -= g_verticalBob * 0.8f;
+		view->angles[YAW] -= g_lateralBob * 0.8f;
 
 		VectorMA(view->origin, g_lateralBob * 0.8f, right, view->origin);
 	}
 	else
 	{
-		// Стандартний HL1 bobbing
 		gEngfuncs.V_ApplyShake(view->origin, view->angles, 0.9);
 
-		for (int i = 0; i < 3; i++)
+		for (i = 0; i < 3; i++)
 		{
-			view->origin[i] += bob * 0.4f * pparams->forward[i];
+			view->origin[i] += bob * 0.4 * pparams->forward[i];
 		}
 		view->origin[2] += bob;
 
 		// throw in a little tilt.
-		view->angles[YAW] -= bob * 0.5f;
-		view->angles[ROLL] -= bob * 1.0f;
-		view->angles[PITCH] -= bob * 0.3f;
+		view->angles[YAW] -= bob * 0.5;
+		view->angles[ROLL] -= bob * 1;
+		view->angles[PITCH] -= bob * 0.3;
 
 		if (cl_bob_angled.GetBool())
 		{
