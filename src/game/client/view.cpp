@@ -172,157 +172,6 @@ float V_CalcNewBob(struct ref_params_s *pparams)
 	return 0.0f;
 }
 
-// Quakeworld bob code, this fixes jitters in the mutliplayer since the clock (pparams->time) isn't quite linear
-float V_CalcBob(struct ref_params_s *pparams)
-{
-	static float lasttime;
-	static double bobtime;
-	static float bob;
-	float cycle;
-	float cvar_bob, cvar_bobup, cvar_bobcycle;
-	Vector vel;
-
-	if (pparams->onground == -1 || pparams->time == lasttime)
-		return bob;
-
-	lasttime = pparams->time;
-
-	cvar_bobcycle = max(cl_bobcycle->value, 0.1f);
-	cvar_bobup = max(cl_bobup->value, 0.1f);
-	cvar_bob = max(cl_bob->value, 0.f);
-
-	if (cvar_bob == 0.0)
-		return 0.0;
-
-	bobtime += pparams->frametime;
-	cycle = bobtime - (int)(bobtime / cvar_bobcycle) * cvar_bobcycle;
-	cycle /= cvar_bobcycle;
-
-	if (cycle < cvar_bobup)
-		cycle = M_PI * cycle / cvar_bobup;
-	else
-		cycle = M_PI + M_PI * (cycle - cvar_bobup) / (1.0 - cvar_bobup);
-
-	VectorCopy(pparams->simvel, vel);
-	vel[2] = 0;
-
-	if (!cl_hl2_bob.GetBool())
-		bob = sqrt(vel[0] * vel[0] + vel[1] * vel[1]) * cvar_bob;
-	else
-		bob = 0.0f; // HL2 bob не використовує цю змінну
-
-	bob = bob * 0.3f + bob * 0.7f * sin(cycle);
-	bob = min(bob, 4.f);
-	bob = max(bob, -7.f);
-	return bob;
-}
-
-
-// --- Модифікація V_CalcNormalRefdef для підтримки hl2_bob ---
-void V_CalcNormalRefdef(struct ref_params_s *pparams)
-{
-	// ... (весь існуючий код до view->origin налишається без змін)
-
-	// --- HL2 bobbing ---
-	if (cl_hl2_bob.GetBool())
-	{
-		Vector forward, right;
-		AngleVectors(view->angles, forward, right, NULL);
-
-		V_CalcNewBob(pparams);
-
-		// Apply bob, but scaled down to 40%
-		VectorMA(view->origin, g_verticalBob * 0.1f, forward, view->origin);
-
-		// Z bob a bit more
-		view->origin[2] += g_verticalBob * 0.1f;
-
-		// bob the angles
-		view->angles[ROLL] += g_verticalBob * 0.3f;
-		view->angles[PITCH] -= g_verticalBob * 0.8f;
-		view->angles[YAW] -= g_lateralBob * 0.8f;
-
-		VectorMA(view->origin, g_lateralBob * 0.8f, right, view->origin);
-	}
-	else
-	{
-		gEngfuncs.V_ApplyShake(view->origin, view->angles, 0.9);
-
-		for (i = 0; i < 3; i++)
-		{
-			view->origin[i] += bob * 0.4 * pparams->forward[i];
-		}
-		view->origin[2] += bob;
-
-		// throw in a little tilt.
-		view->angles[YAW] -= bob * 0.5;
-		view->angles[ROLL] -= bob * 1;
-		view->angles[PITCH] -= bob * 0.3;
-
-		if (cl_bob_angled.GetBool())
-		{
-			view->curstate.angles = view->angles;
-		}
-	}
-}
-//=============================================================================
-/*
-void V_NormalizeAngles( float *angles )
-{
-	int i;
-	// Normalize angles
-	for ( i = 0; i < 3; i++ )
-	{
-		if ( angles[i] > 180.0 )
-		{
-			angles[i] -= 360.0;
-		}
-		else if ( angles[i] < -180.0 )
-		{
-			angles[i] += 360.0;
-		}
-	}
-}
-
-/*
-===================
-V_InterpolateAngles
-
-Interpolate Euler angles.
-FIXME:  Use Quaternions to avoid discontinuities
-Frac is 0.0 to 1.0 ( i.e., should probably be clamped, but doesn't have to be )
-===================
-
-void V_InterpolateAngles( float *start, float *end, float *output, float frac )
-{
-	int i;
-	float ang1, ang2;
-	float d;
-	
-	V_NormalizeAngles( start );
-	V_NormalizeAngles( end );
-
-	for ( i = 0 ; i < 3 ; i++ )
-	{
-		ang1 = start[i];
-		ang2 = end[i];
-
-		d = ang2 - ang1;
-		if ( d > 180 )
-		{
-			d -= 360;
-		}
-		else if ( d < -180 )
-		{	
-			d += 360;
-		}
-
-		output[i] = ang1 + d * frac;
-	}
-
-	V_NormalizeAngles( output );
-} */
-
 static float Distance(const Vector v1, const Vector v2)
 {
 	Vector d;
@@ -373,7 +222,11 @@ float V_CalcBob(struct ref_params_s *pparams)
 	VectorCopy(pparams->simvel, vel);
 	vel[2] = 0;
 
-	bob = sqrt(vel[0] * vel[0] + vel[1] * vel[1]) * cvar_bob;
+	if (!cl_hl2_bob.GetBool())
+		bob = sqrt(vel[0] * vel[0] + vel[1] * vel[1]) * cvar_bob;
+	else
+		bob = 0.0f; // HL2 bob не використовує цю змінну
+
 	bob = bob * 0.3 + bob * 0.7 * sin(cycle);
 	bob = min(bob, 4.f);
 	bob = max(bob, -7.f);
