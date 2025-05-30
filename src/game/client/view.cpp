@@ -113,6 +113,177 @@ cvar_t v_ipitch_level = { "v_ipitch_level", "0.3", 0, 0.3 };
 
 float v_idlescale; // used by TFC for concussion grenade effect
 
+#define HL2_BOB_CYCLE_MAX 0.45f
+#define HL2_BOB_UP        0.5f
+
+// Глобальні змінні для HL2 bobbing
+float g_lateralBob = 0.0f;
+float g_verticalBob = 0.0f;
+
+// ConVar для увімкнення HL2 bobbing
+ConVar cl_hl2_bob("cl_hl2_bob", "0", FCVAR_BHL_ARCHIVE, "Half-Life 2 style viewmodel bobbing");
+
+// Функція розрахунку HL2 bobbing
+float V_CalcNewBob(struct ref_params_s *pparams)
+{
+	static float bobtime = 0.0f;
+	static float lastbobtime = 0.0f;
+	float cycle;
+
+	Vector vel;
+	VectorCopy(pparams->simvel, vel);
+	vel[2] = 0;
+
+	if (pparams->onground == -1 || pparams->time == lastbobtime)
+	{
+		return 0.0f;
+	}
+
+	float speed = sqrt(vel[0] * vel[0] + vel[1] * vel[1]);
+	speed = clamp(speed, -320.0f, 320.0f);
+
+	float bob_offset = RemapVal(speed, 0, 320, 0.0f, 1.0f);
+
+	bobtime += (pparams->time - lastbobtime) * bob_offset;
+	lastbobtime = pparams->time;
+
+	// Vertical bob
+	cycle = bobtime - (int)(bobtime / HL2_BOB_CYCLE_MAX) * HL2_BOB_CYCLE_MAX;
+	cycle /= HL2_BOB_CYCLE_MAX;
+
+	if (cycle < HL2_BOB_UP)
+	{
+		cycle = M_PI * cycle / HL2_BOB_UP;
+	}
+	else
+	{
+		cycle = M_PI + M_PI * (cycle - HL2_BOB_UP) / (1.0f - HL2_BOB_UP);
+	}
+
+	g_verticalBob = speed * 0.004f;
+	g_verticalBob = g_verticalBob * 0.3f + g_verticalBob * 0.7f * sin(cycle);
+	g_verticalBob = clamp(g_verticalBob, -7.0f, 4.0f);
+
+	// Lateral bob
+	cycle = bobtime - (int)(bobtime / (HL2_BOB_CYCLE_MAX * 2)) * (HL2_BOB_CYCLE_MAX * 2);
+	cycle /= (HL2_BOB_CYCLE_MAX * 2);
+
+	if (cycle < HL2_BOB_UP)
+	{
+		cycle = M_PI * cycle / HL2_BOB_UP;
+	}
+	else
+	{
+		cycle = M_PI + M_PI * (cycle - HL2_BOB_UP) / (1.0f - HL2_BOB_UP);
+	}
+
+	g_lateralBob = speed * 0.004f;
+	g_lateralBob = g_lateralBob * 0.3f + g_lateralBob * 0.7f * sin(cycle);
+	g_lateralBob = clamp(g_lateralBob, -7.0f, 4.0f);
+
+	return 0.0f;
+}
+
+// --- Модифікація V_CalcBob для підтримки hl2_bob ---
+float V_CalcBob(struct ref_params_s *pparams)
+{
+	static float lasttime;
+	static double bobtime;
+	static float bob;
+	float cycle;
+	float cvar_bob, cvar_bobup, cvar_bobcycle;
+	Vector vel;
+
+	if (pparams->onground == -1 || pparams->time == lasttime)
+	{
+		// just use old value
+		return bob;
+	}
+
+	lasttime = pparams->time;
+
+	cvar_bobcycle = max(cl_bobcycle->value, 0.1f);
+	cvar_bobup = max(cl_bobup->value, 0.1f);
+	cvar_bob = max(cl_bob->value, 0.f);
+
+	if (cvar_bob == 0.0)
+		return 0.0;
+
+	bobtime += pparams->frametime;
+	cycle = bobtime - (int)(bobtime / cvar_bobcycle) * cvar_bobcycle;
+	cycle /= cvar_bobcycle;
+
+	if (cycle < cvar_bobup)
+	{
+		cycle = M_PI * cycle / cvar_bobup;
+	}
+	else
+	{
+		cycle = M_PI + M_PI * (cycle - cvar_bobup) / (1.0 - cvar_bobup);
+	}
+
+	VectorCopy(pparams->simvel, vel);
+	vel[2] = 0;
+
+	if (!cl_hl2_bob.GetBool())
+		bob = sqrt(vel[0] * vel[0] + vel[1] * vel[1]) * cvar_bob;
+	else
+		bob = 0.0f; // HL2 bob не використовує цю змінну
+
+	bob = bob * 0.3f + bob * 0.7f * sin(cycle);
+	bob = min(bob, 4.f);
+	bob = max(bob, -7.f);
+	return bob;
+}
+
+// --- Модифікація V_CalcNormalRefdef для підтримки hl2_bob ---
+void V_CalcNormalRefdef(struct ref_params_s *pparams)
+{
+	// ... (весь існуючий код до view->origin налишається без змін)
+
+	// --- HL2 bobbing ---
+	if (cl_hl2_bob.GetBool())
+	{
+		Vector forward, right;
+		AngleVectors(view->angles, forward, right, NULL);
+
+		V_CalcNewBob(pparams);
+
+		// Apply bob, but scaled down to 40%
+		VectorMA(view->origin, g_verticalBob * 0.1f, forward, view->origin);
+
+		// Z bob a bit more
+		view->origin[2] += g_verticalBob * 0.1f;
+
+		// bob the angles
+		angles[ROLL] += g_verticalBob * 0.3f;
+		angles[PITCH] -= g_verticalBob * 0.8f;
+		angles[YAW] -= g_lateralBob * 0.8f;
+
+		VectorMA(view->origin, g_lateralBob * 0.8f, right, view->origin);
+	}
+	else
+	{
+		// Стандартний HL1 bobbing
+		gEngfuncs.V_ApplyShake(view->origin, view->angles, 0.9);
+
+		for (int i = 0; i < 3; i++)
+		{
+			view->origin[i] += bob * 0.4f * pparams->forward[i];
+		}
+		view->origin[2] += bob;
+
+		// throw in a little tilt.
+		view->angles[YAW] -= bob * 0.5f;
+		view->angles[ROLL] -= bob * 1.0f;
+		view->angles[PITCH] -= bob * 0.3f;
+
+		if (cl_bob_angled.GetBool())
+		{
+			view->curstate.angles = view->angles;
+		}
+	}
+}
 //=============================================================================
 /*
 void V_NormalizeAngles( float *angles )
