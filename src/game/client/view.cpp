@@ -123,6 +123,7 @@ float v_idlescale; // used by TFC for concussion grenade effect
 float g_lateralBob;
 float g_verticalBob;
 float m_flWeaponLag = 1.5f;
+static Vector m_vecLastFacing(1, 0, 0);
 
 
 ConVar cl_hl2_weaponlag("cl_hl2_weaponlag", "0", FCVAR_BHL_ARCHIVE, "Half-Life 2 weaponlag");
