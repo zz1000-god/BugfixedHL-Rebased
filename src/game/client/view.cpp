@@ -200,64 +200,43 @@ V_CalcViewModelLag
 */
 void V_CalcViewModelLag(ref_params_t *pparams, Vector &origin, Vector &angles, Vector original_angles)
 {
-	static Vector m_vecLastFacing;
-	Vector vOriginalOrigin = origin;
-	Vector vOriginalAngles = angles;
+    if (m_flWeaponLag <= 0.0f)
+        return;
 
-	// Calculate our drift
-	Vector forward, right, up;
-	AngleVectors(angles, forward, right, up);
+    Vector forward, right, up;
+    AngleVectors(angles, forward, right, up);
 
-	if (pparams->frametime != 0.0f) // not in paused
-	{
-		Vector vDifference;
+    if (pparams->frametime != 0.0f)
+    {
+        Vector vDifference = forward - m_vecLastFacing;
+        float flSpeed = 5.0f;
 
-		vDifference = forward - m_vecLastFacing;
+        float flDiff = vDifference.Length();
+        if (flDiff > m_flWeaponLag && m_flWeaponLag > 0.0f)
+        {
+            float flScale = flDiff / m_flWeaponLag;
+            flSpeed *= flScale;
+        }
 
-		float flSpeed = 5.0f;
+        VectorMA(m_vecLastFacing, pparams->frametime * flSpeed, vDifference, m_vecLastFacing);
+        
+        float len = m_vecLastFacing.Length();
+        if (len > 0.0f)
+            m_vecLastFacing = m_vecLastFacing * (1.0f / len);
+        else
+            m_vecLastFacing = Vector(1, 0, 0);
+    }
 
-		// If we start to lag too far behind, we'll increase the "catch up" speed.
-		// Solves the problem with fast cl_yawspeed, m_yaw or joysticks rotating quickly.
-		// The old code would slam lastfacing with origin causing the viewmodel to pop to a new position
-		float flDiff = vDifference.Length();
-		if ((flDiff > m_flWeaponLag) && (m_flWeaponLag > 0.0f))
-		{
-			float flScale = flDiff / m_flWeaponLag;
-			flSpeed *= flScale;
-		}
-
-		// FIXME:  Needs to be predictable?
-		m_vecLastFacing = m_vecLastFacing + vDifference * (flSpeed * pparams->frametime);
-		// Make sure it doesn't grow out of control!!!
-		m_vecLastFacing = m_vecLastFacing.Normalized();
-		origin = origin + (vDifference * -1.0f) * 5.0f;
-	}
-
-	AngleVectors(original_angles, forward, right, up);
-
-	float pitch = original_angles[PITCH];
-
-	if (pitch > 180.0f)
-	{
-		pitch -= 360.0f;
-	}
-	else if (pitch < -180.0f)
-	{
-		pitch += 360.0f;
-	}
-
-	if (m_flWeaponLag <= 0.0f)
-	{
-		origin = vOriginalOrigin;
-		angles = vOriginalAngles;
-	}
-	else
-	{
-		// FIXME: These are the old settings that caused too many exposed polys on some models
-		origin = origin + forward * (-pitch * 0.015f);
-		origin = origin + right * (-pitch * 0.01f);
-		origin = origin + up * (-pitch * 0.005f);
-	}
+    // Застосовуємо lag на основі різниці векторів
+    Vector lagDifference = forward - m_vecLastFacing;
+    
+    origin = origin + right * (lagDifference[0] * 2.0f);
+    origin = origin + up * (lagDifference[1] * 2.0f);
+    origin = origin + forward * (lagDifference[2] * 1.0f);
+    
+    angles[PITCH] += lagDifference[1] * 0.5f;
+    angles[YAW] += lagDifference[0] * 0.5f;
+    angles[ROLL] += lagDifference[0] * 0.25f;
 }
 
 static float Distance(const Vector v1, const Vector v2)
