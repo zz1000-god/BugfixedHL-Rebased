@@ -905,7 +905,7 @@ void CHudAmmo::Draw(float flTime)
 	// Draw weapon sprite
 	if (hud_weapon.GetBool())
 	{
-		y = ScreenHeight - (m_pWeapon->rcInactive.bottom - m_pWeapon->rcInactive.top) - 21;
+		y = ScreenHeight - (m_pWeapon->rcInactive.bottom - m_pWeapon->rcInactive.top) - 15;
 		x = ScreenWidth - (20.0 * AmmoWidth) - (m_pWeapon->rcInactive.right - m_pWeapon->rcInactive.left);
 		SPR_Set(m_pWeapon->hInactive, r, g, b);
 		SPR_DrawAdditive(0, x, y, &m_pWeapon->rcInactive);
