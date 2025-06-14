@@ -63,7 +63,24 @@ void AgHudPlayerId::Draw(float fTime)
 
 		if (CVAR_GET_FLOAT("hud_centerid"))
 		{
-			AgDrawHudStringCentered(ScreenWidth / 2, ScreenHeight - ScreenHeight / 4, ScreenWidth, szText, r, g, b);
+			if (gHUD.GetColorCodeAction() != ColorCodeAction::Ignore) 
+			{
+				int textWidth = gHUD.GetHudStringWidth(szText);
+				int xPos = (ScreenWidth - textWidth) / 2;
+				gHUD.DrawHudStringColorCodes(xPos, 
+									   ScreenHeight - ScreenHeight / 4,
+									   ScreenWidth,
+									   szText, 
+									   r, g, b);
+			}
+			else
+			{
+				AgDrawHudStringCentered(ScreenWidth / 2,
+									  ScreenHeight - ScreenHeight / 4,
+									  ScreenWidth,
+									  szText,
+									  r, g, b);
+			}
 		}
 		else
 		{
