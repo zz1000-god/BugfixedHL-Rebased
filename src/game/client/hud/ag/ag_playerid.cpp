@@ -65,7 +65,10 @@ void AgHudPlayerId::Draw(float fTime)
 		{
 			if (gHUD.GetColorCodeAction() != ColorCodeAction::Ignore) 
 			{
-				int textWidth = gHUD.GetHudStringWidth(szText);
+				// Отримуємо ширину тексту через GetConsoleStringSize
+				int textWidth, textHeight;
+				GetConsoleStringSize(szText, &textWidth, &textHeight);
+				
 				int xPos = (ScreenWidth - textWidth) / 2;
 				gHUD.DrawHudStringColorCodes(xPos, 
 									   ScreenHeight - ScreenHeight / 4,
