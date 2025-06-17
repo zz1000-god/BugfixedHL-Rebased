@@ -579,7 +579,7 @@ void CHudTimer::Draw(float fTime)
 	// Draw timer
 	float timeleft = m_flSynced ? (int)(m_flEndTime - currentTime) + 1 : (int)(m_flEndTime - m_flEffectiveTime);
 	int hud_timer = (int)m_pCvarHudTimer->value;
-	int ypos = ScreenHeight * TIMER_Y;
+	int ypos = gHUD.m_scrinfo.iCharHeight;
 	switch (hud_timer)
 	{
 	case 1: // time left
@@ -595,7 +595,7 @@ void CHudTimer::Draw(float fTime)
 		struct tm *timeinfo;
 		time(&rawtime);
 		timeinfo = localtime(&rawtime);
-		sprintf(text, "Clock %d:%02d:%02d", (int)timeinfo->tm_hour, (int)timeinfo->tm_min, (int)timeinfo->tm_sec);
+		sprintf(text, "%d:%02d:%02d", (int)timeinfo->tm_hour, (int)timeinfo->tm_min, (int)timeinfo->tm_sec);
 		// Output to screen
 		int width = TextMessageDrawString(ScreenWidth + 1, ypos, text, 0, 0, 0);
 		TextMessageDrawString((ScreenWidth - width) / 2, ypos, text, r, g, b);
