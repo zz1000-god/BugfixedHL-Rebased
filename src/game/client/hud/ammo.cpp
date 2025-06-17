@@ -902,6 +902,9 @@ void CHudAmmo::Draw(float flTime)
 	gHUD.GetHudColor(HudPart::Common, 0, r, g, b);
 	ScaleColors(r, g, b, a);
 
+	// Does this weapon have a clip?
+	y = ScreenHeight - gHUD.m_iFontHeight - gHUD.m_iFontHeight / 2;
+
 	// Draw weapon sprite
 	if (hud_weapon.GetBool())
 	{
@@ -916,10 +919,6 @@ void CHudAmmo::Draw(float flTime)
 		return;
 
 	int iFlags = DHN_DRAWZERO; // draw 0 values
-
-	// Does this weapon have a clip?
-	y = ScreenHeight - gHUD.m_iFontHeight - gHUD.m_iFontHeight / 2;
-	y += (int)(gHUD.m_iFontHeight * 0.2f);
 
 	// Does weapon have any ammo at all?
 	if (m_pWeapon->iAmmoType > 0)
