@@ -890,7 +890,7 @@ void CHudAmmo::Draw(float flTime)
     if (m_fFade > 0)
         m_fFade -= (gHUD.m_flTimeDelta * 20);
 
-    UnpackRGB(r,g,b, gHUD.m_iDefaultHUDColor);
+    UnpackRGB(r, g, b, gHUD.m_iDefaultHUDColor);
 
     ScaleColors(r, g, b, a );
 
@@ -926,7 +926,8 @@ void CHudAmmo::Draw(float flTime)
         {
             // room for the number and the '|' and the current ammo
             x = ScreenWidth - (8 * AmmoWidth) - iIconWidth;
-            x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, pw->iClip, r, g, b);
+            // Змінюємо DHN_3DIGITS на -1 для відображення всіх цифр
+            x = gHUD.DrawHudNumber(x, y, iFlags, pw->iClip, r, g, b);
 
             wrect_t rc;
             rc.top = 0;
@@ -947,13 +948,15 @@ void CHudAmmo::Draw(float flTime)
 
             // GL Seems to need this
             ScaleColors(r, g, b, a );
-            x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(pw->iAmmoType), r, g, b);		
+            // Змінюємо DHN_3DIGITS на -1 для відображення всіх цифр
+            x = gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmoType), r, g, b);        
         }
         else
         {
             // SPR_Draw a bullets only line
             x = ScreenWidth - 4 * AmmoWidth - iIconWidth;
-            x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(pw->iAmmoType), r, g, b);
+            // Змінюємо DHN_3DIGITS на -1 для відображення всіх цифр
+            x = gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmoType), r, g, b);
         }
 
         // Draw the ammo Icon
@@ -972,7 +975,8 @@ void CHudAmmo::Draw(float flTime)
         {
             y -= gHUD.m_iFontHeight + gHUD.m_iFontHeight/4;
             x = ScreenWidth - 4 * AmmoWidth - iIconWidth;
-            x = gHUD.DrawHudNumber(x, y, iFlags|DHN_3DIGITS, gWR.CountAmmo(pw->iAmmo2Type), r, g, b);
+            // Змінюємо DHN_3DIGITS на -1 для відображення всіх цифр
+            x = gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmo2Type), r, g, b);
 
             // Draw the ammo Icon
             SPR_Set(m_pWeapon->hAmmo2, r, g, b);
