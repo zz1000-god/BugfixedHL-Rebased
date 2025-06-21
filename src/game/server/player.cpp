@@ -1810,11 +1810,38 @@ void CBasePlayer::Jump()
 	if (!FBitSet(m_afButtonPressed, IN_JUMP))
 		return;
 
-	if ((pev->flags & FL_ONGROUND) && pev->groundentity)
+	const bool onGround = (pev->flags & FL_ONGROUND) && pev->groundentity;
+
+	UTIL_MakeVectors(pev->angles);
+	Vector forward = gpGlobals->v_forward;
+
+	Vector velocity2D(pev->velocity.x, pev->velocity.y, 0);
+	float speed = velocity2D.Length();
+	float dot = forward.x * pev->velocity.x + forward.y * pev->velocity.y;
+
+	// 🔄 ABH логіка — ТІЛЬКИ якщо на землі і дозволено
+	if (sv_abh->value > 0.0f && onGround)
+	{
+		if (dot > 0.0f && speed > 500.0f)
+		{
+			// Стрибок вперед — імітуємо втрату швидкості
+			float slowAmount = min(300.0f, dot * 0.2f);
+			pev->velocity = pev->velocity - forward * slowAmount;
+		}
+		else if (dot < 0.0f && speed > 50.0f)
+		{
+			// Стрибок назад — ABH: додаємо швидкість
+			float boostAmount = min(300.0f, (-dot) * 0.2f);
+			pev->velocity = pev->velocity + forward * -boostAmount;
+		}
+	}
+
+	// 🌍 Стандартний стрибок (земля)
+	if (onGround)
 	{
 		SetAnimation(PLAYER_JUMP);
 
-		if (m_fLongJump && (pev->button & IN_DUCK) && (pev->flDuckTime > 0) && pev->velocity.Length() > 50)
+		if (m_fLongJump && (pev->button & IN_DUCK) && (pev->flDuckTime > 0) && speed > 50)
 			SetAnimation(PLAYER_SUPERJUMP);
 
 		entvars_t* pevGround = VARS(pev->groundentity);
@@ -1831,30 +1858,6 @@ void CBasePlayer::Jump()
 		pev->flags &= ~FL_ONGROUND;
 
 		EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_jump1.wav", 1, ATTN_NORM);
-		return;
-	}
-
-	// 🔄 ABH логіка, якщо увімкнено через sv_abh
-	if (sv_abh->value > 0.0f && (pev->button & IN_JUMP))
-	{
-		UTIL_MakeVectors(pev->angles);
-		Vector forward = gpGlobals->v_forward;
-
-		Vector velocity2D(pev->velocity.x, pev->velocity.y, 0);
-		float dot = forward.x * pev->velocity.x + forward.y * pev->velocity.y;
-
-		if (dot > 0.0f)
-		{
-			// Стрибок вперед — зменшуємо швидкість
-			float slowAmount = min(300.0f, dot * 0.2f);
-			pev->velocity = pev->velocity - forward * slowAmount;
-		}
-		else if (dot < 0.0f)
-		{
-			// Стрибок назад — ABH прискорення
-			float boostAmount = min(300.0f, (-dot) * 0.2f);
-			pev->velocity = pev->velocity + forward * -boostAmount;
-		}
 	}
 }
 
