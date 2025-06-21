@@ -1826,17 +1826,19 @@ void CBasePlayer::Jump()
 		return;
 	}
 
-	// 🔶 ABH логіка: якщо гравець у повітрі, натискає jump і рухається назад
+	// 🔶 ABH логіка: у повітрі, натискає jump
 	if (!(pev->flags & FL_ONGROUND) && (pev->button & IN_JUMP))
 	{
-		// Перевірка: рух назад
-		if (pev->v_forward.x * pev->velocity.x + pev->v_forward.y * pev->velocity.y < 0)
-		{
-			// Отримуємо напрямок "назад"
-			UTIL_MakeVectors(pev->angles);
-			Vector backward = gpGlobals->v_forward * -1.0f;
+		// Отримуємо вектор "вперед" згідно з кутом огляду
+		UTIL_MakeVectors(pev->angles);
+		Vector forward = gpGlobals->v_forward;
 
-			// Приріст швидкості
+		// Перевірка: гравець рухається назад (dot product < 0)
+		float dot = forward.x * pev->velocity.x + forward.y * pev->velocity.y;
+		if (dot < 0.0f)
+		{
+			// Додаємо швидкість назад
+			Vector backward = forward * -1.0f;
 			float speedBoost = 60.0f;
 			pev->velocity = pev->velocity + backward * speedBoost;
 
@@ -1848,10 +1850,9 @@ void CBasePlayer::Jump()
 				float scale = 1500.0f / len;
 				pev->velocity.x *= scale;
 				pev->velocity.y *= scale;
-				// z не чіпаємо
 			}
 
-			// Звук (опційно)
+			// Звук (опціонально)
 			EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_jump1.wav", 1, ATTN_NORM);
 		}
 	}
