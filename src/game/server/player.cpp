@@ -1798,7 +1798,7 @@ void CBasePlayer::Jump()
 	if (!FBitSet(m_afButtonPressed, IN_JUMP))
 		return;
 
-	// Стрибок із землі (звичайна поведінка)
+	// Стрибок із землі — стандартна логіка
 	if ((pev->flags & FL_ONGROUND) && pev->groundentity)
 	{
 		SetAnimation(PLAYER_JUMP);
@@ -1806,46 +1806,56 @@ void CBasePlayer::Jump()
 		if (m_fLongJump && (pev->button & IN_DUCK) && (pev->flDuckTime > 0) && pev->velocity.Length() > 50)
 			SetAnimation(PLAYER_SUPERJUMP);
 
-		// Додати швидкість платформи
-		entvars_t *pevGround = VARS(pev->groundentity);
-		if (pevGround && (pevGround->flags & FL_CONVEYOR))
-			pev->velocity = pev->velocity + pev->basevelocity;
+		// Додати швидкість від платформи
+		entvars_t* pevGround = VARS(pev->groundentity);
+		if (pevGround)
+		{
+			if (pevGround->flags & FL_CONVEYOR)
+				pev->velocity = pev->velocity + pev->basevelocity;
 
-		if (pevGround && !strcmp("func_vehicle", STRING(pevGround->classname)))
-			pev->velocity = pev->velocity + pevGround->velocity;
+			if (!strcmp("func_vehicle", STRING(pevGround->classname)))
+				pev->velocity = pev->velocity + pevGround->velocity;
+		}
 
 		// Додати вертикальну швидкість
-		pev->velocity.z += 250; // або інше значення
+		pev->velocity.z += 250.0f;
 		pev->flags &= ~FL_ONGROUND;
+
+		// Звук
+		EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_jump1.wav", 1, ATTN_NORM);
 		return;
 	}
 
-	// 🟡 ABH: у повітрі, назад
-	if (!(pev->flags & FL_ONGROUND) && pev->velocity.z < 0 && pev->button & IN_JUMP)
+	// 🔶 ABH логіка: якщо гравець у повітрі, натискає jump і рухається назад
+	if (!(pev->flags & FL_ONGROUND) && (pev->button & IN_JUMP))
 	{
-		// Напрямок руху — назад від камери
-		// ABH логіка
-		UTIL_MakeVectors(pev->angles);
-		Vector backward = gpGlobals->v_forward * -1.0f;
-		float speedBoost = 60.0f;
-
-		pev->velocity = pev->velocity + backward * speedBoost;
-
-		// Обмеження максимальної XY-швидкості
-		Vector velocity2D = pev->velocity;
-		velocity2D.z = 0;
-
-		float speed = velocity2D.Length();
-		if (speed > 1500.0f)
+		// Перевірка: рух назад
+		if (pev->v_forward.x * pev->velocity.x + pev->v_forward.y * pev->velocity.y < 0)
 		{
-			Vector dir = velocity2D / speed; // нормалізація
-			Vector clamped = dir * 1500.0f;
-			pev->velocity.x = clamped.x;
-			pev->velocity.y = clamped.y;
-			// z залишаємо
-		}
-}
+			// Отримуємо напрямок "назад"
+			UTIL_MakeVectors(pev->angles);
+			Vector backward = gpGlobals->v_forward * -1.0f;
 
+			// Приріст швидкості
+			float speedBoost = 60.0f;
+			pev->velocity = pev->velocity + backward * speedBoost;
+
+			// Обмеження XY-швидкості
+			Vector velocity2D(pev->velocity.x, pev->velocity.y, 0);
+			float len = sqrt(velocity2D.x * velocity2D.x + velocity2D.y * velocity2D.y);
+			if (len > 1500.0f)
+			{
+				float scale = 1500.0f / len;
+				pev->velocity.x *= scale;
+				pev->velocity.y *= scale;
+				// z не чіпаємо
+			}
+
+			// Звук (опційно)
+			EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_jump1.wav", 1, ATTN_NORM);
+		}
+	}
+}
 
 // This is a glorious hack to find free space when you've crouched into some solid space
 // Our crouching collisions do not work correctly for some reason and this is easier
