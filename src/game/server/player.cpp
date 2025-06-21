@@ -1792,63 +1792,53 @@ void CBasePlayer::PlayerUse(void)
 
 void CBasePlayer::Jump()
 {
-	Vector vecWallCheckDir; // direction we're tracing a line to find a wall when walljumping
-	Vector vecAdjustedVelocity;
-	Vector vecSpot;
-	TraceResult tr;
-
-	if (FBitSet(pev->flags, FL_WATERJUMP))
+	if (FBitSet(pev->flags, FL_WATERJUMP) || pev->waterlevel >= 2)
 		return;
 
-	if (pev->waterlevel >= 2)
-	{
-		return;
-	}
-
-	// jump velocity is sqrt( height * gravity * 2)
-
-	// If this isn't the first frame pressing the jump button, break out.
 	if (!FBitSet(m_afButtonPressed, IN_JUMP))
-		return; // don't pogo stick
+		return;
 
-	if (!(pev->flags & FL_ONGROUND) || !pev->groundentity)
+	// Стрибок із землі (звичайна поведінка)
+	if ((pev->flags & FL_ONGROUND) && pev->groundentity)
 	{
+		SetAnimation(PLAYER_JUMP);
+
+		if (m_fLongJump && (pev->button & IN_DUCK) && (pev->flDuckTime > 0) && pev->velocity.Length() > 50)
+			SetAnimation(PLAYER_SUPERJUMP);
+
+		// Додати швидкість платформи
+		entvars_t *pevGround = VARS(pev->groundentity);
+		if (pevGround && (pevGround->flags & FL_CONVEYOR))
+			pev->velocity = pev->velocity + pev->basevelocity;
+
+		if (pevGround && !strcmp("func_vehicle", STRING(pevGround->classname)))
+			pev->velocity = pev->velocity + pevGround->velocity;
+
+		// Додати вертикальну швидкість
+		pev->velocity.z += 250; // або інше значення
+		pev->flags &= ~FL_ONGROUND;
 		return;
 	}
 
-	// many features in this function use v_forward, so makevectors now.
-	UTIL_MakeVectors(pev->angles);
-
-	// ClearBits(pev->flags, FL_ONGROUND);		// don't stairwalk
-
-	SetAnimation(PLAYER_JUMP);
-
-	if (m_fLongJump && (pev->button & IN_DUCK) && (pev->flDuckTime > 0) && pev->velocity.Length() > 50)
+	// 🟡 ABH: у повітрі, назад
+	if (!(pev->flags & FL_ONGROUND) && pev->velocity.z < 0 && pev->button & IN_JUMP)
 	{
-		SetAnimation(PLAYER_SUPERJUMP);
-	}
+		// Напрямок руху — назад від камери
+		UTIL_MakeVectors(pev->angles);
+		Vector backward = gpGlobals->v_forward * -1.0;
 
-	// If you're standing on a conveyor, add it's velocity to yours (for momentum)
-	entvars_t *pevGround = VARS(pev->groundentity);
-	if (pevGround && (pevGround->flags & FL_CONVEYOR))
-	{
-		pev->velocity = pev->velocity + pev->basevelocity;
-	}
+		float speedBoost = 60.0f; // підбери як треба
+		pev->velocity = pev->velocity + backward * speedBoost;
 
-	// JoshA: CS behaviour does this for tracktrain + train as well,
-	// but let's just do this for func_vehicle to avoid breaking existing content.
-	//
-	// If you're standing on a moving train... then add the velocity of the train to yours.
-	if (pevGround &&
-		/*(
-			!strcmp( "func_tracktrain", STRING(pevGround->classname)) ||
-			!strcmp( "func_train", STRING(pevGround->classname))
-		) ||*/
-	    !strcmp("func_vehicle", STRING(pevGround->classname)))
-	{
-		pev->velocity = pev->velocity + pevGround->velocity;
+		// Можна обмежити максимальну швидкість
+		if (pev->velocity.Length2D() > 1500.0f)
+			pev->velocity = pev->velocity.Normalize() * 1500.0f;
+
+		// ефект стрибка
+		EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_jump1.wav", 1, ATTN_NORM);
 	}
 }
+
 
 // This is a glorious hack to find free space when you've crouched into some solid space
 // Our crouching collisions do not work correctly for some reason and this is easier
