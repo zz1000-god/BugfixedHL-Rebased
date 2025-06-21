@@ -1824,17 +1824,16 @@ void CBasePlayer::Jump()
 	// 🧠 ABH логіка тільки на землі
 	if (sv_abh->value > 0.0f && onGround)
 	{
-		if (dot > 0.0f && speed > maxSpeed)
+		if (dot > 0.0f && speed > 500.0f)
 		{
-			// Обмеження швидкості вперед
-			float scale = maxSpeed / speed;
-			pev->velocity.x *= scale;
-			pev->velocity.y *= scale;
+		    float scale = maxSpeed / speed;
+		    pev->velocity.x *= scale;
+		    pev->velocity.y *= scale;
 		}
 		else if (dot < 0.0f && speed > 350.0f)
 		{
 			// 🔺 Кумулятивне прискорення назад
-			float baseBoost = 50.0f; // базовий імпульс
+			float baseBoost = 100.0f; // базовий імпульс
 			float scaleFactor = 0.2f; // коефіцієнт росту
 			float boost = baseBoost + (speed * scaleFactor);
 
@@ -1865,7 +1864,7 @@ void CBasePlayer::Jump()
 				pev->velocity = pev->velocity + pevGround->velocity;
 		}
 
-		pev->velocity.z += 500.0f;
+		pev->velocity.z += 250.0f;
 		pev->flags &= ~FL_ONGROUND;
 	}
 }
