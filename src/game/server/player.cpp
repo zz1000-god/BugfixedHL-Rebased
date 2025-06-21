@@ -1792,13 +1792,24 @@ void CBasePlayer::PlayerUse(void)
 
 void CBasePlayer::Jump()
 {
+	static cvar_t* sv_abh = nullptr;
+	if (!sv_abh)
+	{
+		sv_abh = CVAR_GET_POINTER("sv_abh");
+		if (!sv_abh)
+		{
+			static cvar_t temp = { "sv_abh", "1", FCVAR_SERVER };
+			sv_abh = &temp;
+			CVAR_REGISTER(sv_abh);
+		}
+	}
+
 	if (FBitSet(pev->flags, FL_WATERJUMP) || pev->waterlevel >= 2)
 		return;
 
 	if (!FBitSet(m_afButtonPressed, IN_JUMP))
 		return;
 
-	// Стрибок із землі — стандартна логіка
 	if ((pev->flags & FL_ONGROUND) && pev->groundentity)
 	{
 		SetAnimation(PLAYER_JUMP);
@@ -1806,7 +1817,6 @@ void CBasePlayer::Jump()
 		if (m_fLongJump && (pev->button & IN_DUCK) && (pev->flDuckTime > 0) && pev->velocity.Length() > 50)
 			SetAnimation(PLAYER_SUPERJUMP);
 
-		// Додати швидкість від платформи
 		entvars_t* pevGround = VARS(pev->groundentity);
 		if (pevGround)
 		{
@@ -1817,43 +1827,33 @@ void CBasePlayer::Jump()
 				pev->velocity = pev->velocity + pevGround->velocity;
 		}
 
-		// Додати вертикальну швидкість
 		pev->velocity.z += 250.0f;
 		pev->flags &= ~FL_ONGROUND;
 
-		// Звук
 		EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_jump1.wav", 1, ATTN_NORM);
 		return;
 	}
 
-	// 🔶 ABH логіка: у повітрі, натискає jump
-	if (!(pev->flags & FL_ONGROUND) && (pev->button & IN_JUMP))
+	// 🔄 ABH логіка, якщо увімкнено через sv_abh
+	if (sv_abh->value > 0.0f && (pev->button & IN_JUMP))
 	{
-		// Отримуємо вектор "вперед" згідно з кутом огляду
 		UTIL_MakeVectors(pev->angles);
 		Vector forward = gpGlobals->v_forward;
 
-		// Перевірка: гравець рухається назад (dot product < 0)
+		Vector velocity2D(pev->velocity.x, pev->velocity.y, 0);
 		float dot = forward.x * pev->velocity.x + forward.y * pev->velocity.y;
-		if (dot < 0.0f)
+
+		if (dot > 0.0f)
 		{
-			// Додаємо швидкість назад
-			Vector backward = forward * -1.0f;
-			float speedBoost = 60.0f;
-			pev->velocity = pev->velocity + backward * speedBoost;
-
-			// Обмеження XY-швидкості
-			Vector velocity2D(pev->velocity.x, pev->velocity.y, 0);
-			float len = sqrt(velocity2D.x * velocity2D.x + velocity2D.y * velocity2D.y);
-			if (len > 1500.0f)
-			{
-				float scale = 1500.0f / len;
-				pev->velocity.x *= scale;
-				pev->velocity.y *= scale;
-			}
-
-			// Звук (опціонально)
-			EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_jump1.wav", 1, ATTN_NORM);
+			// Стрибок вперед — зменшуємо швидкість
+			float slowAmount = min(300.0f, dot * 0.2f);
+			pev->velocity = pev->velocity - forward * slowAmount;
+		}
+		else if (dot < 0.0f)
+		{
+			// Стрибок назад — ABH прискорення
+			float boostAmount = min(300.0f, (-dot) * 0.2f);
+			pev->velocity = pev->velocity + forward * -boostAmount;
 		}
 	}
 }
