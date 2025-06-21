@@ -1824,19 +1824,26 @@ void CBasePlayer::Jump()
 	if (!(pev->flags & FL_ONGROUND) && pev->velocity.z < 0 && pev->button & IN_JUMP)
 	{
 		// Напрямок руху — назад від камери
+		// ABH логіка
 		UTIL_MakeVectors(pev->angles);
-		Vector backward = gpGlobals->v_forward * -1.0;
+		Vector backward = gpGlobals->v_forward * -1.0f;
+		float speedBoost = 60.0f;
 
-		float speedBoost = 60.0f; // підбери як треба
 		pev->velocity = pev->velocity + backward * speedBoost;
 
-		// Можна обмежити максимальну швидкість
-		if (pev->velocity.Length2D() > 1500.0f)
-			pev->velocity = pev->velocity.Normalize() * 1500.0f;
+		// Обмеження максимальної XY-швидкості
+		Vector velocity2D = pev->velocity;
+		velocity2D.z = 0;
 
-		// ефект стрибка
-		EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_jump1.wav", 1, ATTN_NORM);
-	}
+		float speed = velocity2D.Length();
+		if (speed > 1500.0f)
+		{
+			Vector dir = velocity2D / speed; // нормалізація
+			Vector clamped = dir * 1500.0f;
+			pev->velocity.x = clamped.x;
+			pev->velocity.y = clamped.y;
+			// z залишаємо
+		}
 }
 
 
