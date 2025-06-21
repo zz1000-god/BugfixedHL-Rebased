@@ -1804,6 +1804,8 @@ void CBasePlayer::Jump()
 		}
 	}
 
+	const float maxSpeed = CVAR_GET_FLOAT("sv_maxspeed");
+
 	if (FBitSet(pev->flags, FL_WATERJUMP) || pev->waterlevel >= 2)
 		return;
 
@@ -1819,24 +1821,33 @@ void CBasePlayer::Jump()
 	float speed = velocity2D.Length();
 	float dot = forward.x * pev->velocity.x + forward.y * pev->velocity.y;
 
-	// 🔄 ABH логіка — ТІЛЬКИ якщо на землі і дозволено
+	// 🧠 ABH логіка тільки на землі
 	if (sv_abh->value > 0.0f && onGround)
 	{
-		if (dot > 0.0f && speed > 500.0f)
+		if (dot > 0.0f && speed > maxSpeed)
 		{
-			// Стрибок вперед — імітуємо втрату швидкості
-			float slowAmount = min(300.0f, dot * 0.2f);
-			pev->velocity = pev->velocity - forward * slowAmount;
+			// Обмеження швидкості вперед
+			float scale = maxSpeed / speed;
+			pev->velocity.x *= scale;
+			pev->velocity.y *= scale;
 		}
 		else if (dot < 0.0f && speed > 50.0f)
 		{
-			// Стрибок назад — ABH: додаємо швидкість
-			float boostAmount = min(300.0f, (-dot) * 0.2f);
-			pev->velocity = pev->velocity + forward * -boostAmount;
+			// 🔺 Кумулятивне прискорення назад
+			float baseBoost = 50.0f; // базовий імпульс
+			float scaleFactor = 0.2f; // коефіцієнт росту
+			float boost = baseBoost + (speed * scaleFactor);
+
+			// Ліміт (наприклад 300-500)
+			if (boost > 500.0f)
+				boost = 500.0f;
+
+			// Додаємо до швидкості
+			pev->velocity = pev->velocity + forward * -boost;
 		}
 	}
 
-	// 🌍 Стандартний стрибок (земля)
+	// 🌍 Звичайний стрибок
 	if (onGround)
 	{
 		SetAnimation(PLAYER_JUMP);
