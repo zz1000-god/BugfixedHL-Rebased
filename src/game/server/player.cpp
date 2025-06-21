@@ -1805,6 +1805,7 @@ void CBasePlayer::Jump()
 	}
 
 	const float maxSpeed = CVAR_GET_FLOAT("sv_maxspeed");
+	const float mp_bhop = CVAR_GET_FLOAT("mp_bunnyhop");
 
 	if (FBitSet(pev->flags, FL_WATERJUMP) || pev->waterlevel >= 2)
 		return;
@@ -1824,7 +1825,7 @@ void CBasePlayer::Jump()
 	// 🧠 ABH логіка тільки на землі
 	if (sv_abh->value > 0.0f && onGround)
 	{
-		if (dot > 0.0f && speed > 500.0f)
+		if (dot > 0.0f && speed > 500.0f && mp_bhop < 1.0f)
 		{
 		    float scale = maxSpeed / speed;
 		    pev->velocity.x *= scale;
