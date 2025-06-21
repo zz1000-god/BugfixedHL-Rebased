@@ -1831,7 +1831,7 @@ void CBasePlayer::Jump()
 			pev->velocity.x *= scale;
 			pev->velocity.y *= scale;
 		}
-		else if (dot < 0.0f && speed > 50.0f)
+		else if (dot < 0.0f && speed > 350.0f)
 		{
 			// 🔺 Кумулятивне прискорення назад
 			float baseBoost = 50.0f; // базовий імпульс
@@ -1865,7 +1865,7 @@ void CBasePlayer::Jump()
 				pev->velocity = pev->velocity + pevGround->velocity;
 		}
 
-		pev->velocity.z += 250.0f;
+		pev->velocity.z += 500.0f;
 		pev->flags &= ~FL_ONGROUND;
 	}
 }
