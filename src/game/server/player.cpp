@@ -1867,8 +1867,6 @@ void CBasePlayer::Jump()
 
 		pev->velocity.z += 250.0f;
 		pev->flags &= ~FL_ONGROUND;
-
-		EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_jump1.wav", 1, ATTN_NORM);
 	}
 }
 
